@@ -1,0 +1,8 @@
+data/input/
+data/pdf/
+data/mmd/
+data/intermediate/
+data/logs/
+__pycache__/
+*.pyc
+.venv/
