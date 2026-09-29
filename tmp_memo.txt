@@ -1,0 +1,7 @@
+576261
+url_pdf：575626
+conference_url_pdf：53543
+全論文数 8653
+jsonファイルに存在する論文数： 7836
+urlがある数： 7836
+conference_urlがある数： 1930

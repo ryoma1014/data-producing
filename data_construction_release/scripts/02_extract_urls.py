@@ -3,25 +3,39 @@ import json
 from pathlib import Path
 
 def main():
-    extract_urls_from_mmd("data/mmd", "data/intermediate/no_kagikakko_extracted_urls.json")
+    dataset_di = extract_urls_from_mmd("data/mmd")
 
-def extract_urls_from_mmd(folder_path: str, output_json: str = "next_extracted_urls.json"):
+    for v_li in dataset_di.values():
+        for i, url in enumerate(v_li):
+            # "(" と ")" の位置を調べる
+            k1_index = url.find("(")
+            k2_index = url.find(")")
+
+            # 両方とも見つからない場合 → 何もしない
+            if k1_index == -1 and k2_index == -1:
+                continue
+
+            # 見つかった方のうち、位置が小さい方を使う
+            indices = [idx for idx in [k1_index, k2_index] if idx != -1]
+            cut_index = min(indices)
+
+            v_li[i] = url[:cut_index].strip(".,;:\"'()[]。，、")
+
+    writing_dataset_json(dataset_di)
+
+
+def extract_urls_from_mmd(folder_path: str):
     """
-    指定フォルダ内の .mmd ファイルを読み込み、URLを抽出してJSONに保存する関数
+    指定フォルダ内の .mmd ファイルを読み込み、URLを抽出する関数
     
     Parameters
     ----------
     folder_path : str
         .mmdファイルが入っているフォルダのパス
-    output_json : str, optional
-        出力するJSONファイル名 (デフォルト: "extracted_urls.json")
     """
-    # url_pattern = re.compile(r'\b[a-zA-Z][a-zA-Z0-9+.-]*://[^\s)>\]}]+')      # スキームあり
+
     url_pattern = re.compile(r'((https?|ftp)://(?:www\.)?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:/[^\s()]*)?(?<!\.))')
-    # url_pattern = re.compile(
-    #     r'\b(?:[a-zA-Z][a-zA-Z0-9+.-]*://[^\s)>\]}]+|'      # スキームあり
-    #     r'(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:/[^\s)>\]}]*)?)' # スキームなし, URLでないものも抽出してしまう
-    # )
+
     folder = Path(folder_path)
     results = {}
 
@@ -34,11 +48,8 @@ def extract_urls_from_mmd(folder_path: str, output_json: str = "next_extracted_u
         urls = list(dict.fromkeys(clean_urls(urls)))
         results[file_path.stem] = urls
 
-    with open(output_json, "w", encoding="utf-8") as f:
-        json.dump(results, f, ensure_ascii=False, indent=2)
-
-    print(f"====URLを {output_json} に保存しました！====")
     return results
+
 
 def clean_urls(urls: list) -> list:
     # 末尾のよくある句読点や括弧を取り除く
@@ -46,6 +57,7 @@ def clean_urls(urls: list) -> list:
     for url in urls:
         only_urls.append(url.strip(".,;:\"'()[]。，、"))
     return only_urls
+
 
 def modify_url(url: str, text: str) -> str:
     start = text.find(url)
@@ -68,6 +80,12 @@ def modify_url(url: str, text: str) -> str:
             break
 
     return text[span[0]:span[1]]
+
+
+def writing_dataset_json(dataset_di):
+    with open("data/intermediate/perfect_extracted_urls.json", "w") as f:
+        json.dump(dataset_di, f, indent=4, ensure_ascii=False)
+    return
 
 
 if __name__ == '__main__':

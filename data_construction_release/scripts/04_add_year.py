@@ -1,8 +1,6 @@
 import csv
 import json
 
-# FILE_JSON_PATH = "/mnt/c/users/okada/Desktop/松原研究室B4/研究/PapersWithCodeDatasets_papers20250808/papers-with-abstracts_JST202508081105.json"
-# FILE_CSV_PATH = "/mnt/c/users/okada/Desktop/松原研究室B4/研究/2025-0829-making_dataset/train_dev_test_dataset/mydataset_random_2672_papers.csv"
 FILE_JSON_PATH = "data/input/papers-with-abstracts_JST202508081105.json"
 FILE_CSV_PATH = "data/intermediate/labelled.csv"
 

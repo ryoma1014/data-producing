@@ -1,6 +1,5 @@
 import os
 import re
-import sys
 import json
 import requests
 import making_dataset
@@ -13,13 +12,12 @@ PDF_DIR = "data/pdf"
 os.makedirs(PDF_DIR, exist_ok=True)
 os.makedirs("data/logs", exist_ok=True)
 id = 0
-DRY_RUN = "--dry-run" in sys.argv   # True のときはダウンロード・ログ保存をせず件数だけ数える
 counts = {"not_found": 0, "many_match": 0, "no_url": 0, "already": 0, "download": 0}
 def main():
     dataset_papers_li = reading_papers_json()
     check_pdf_url(dataset_papers_li)
     dataset_li = making_dataset.reading_json()
-    papers_title_list = making_dataset.paper_verified_paper_nodup(dataset_li)     # dataset_liに登録されている論文タイトルの重複なしリストを作る
+    papers_title_list = making_dataset.paper_verified_paper_nodup(dataset_li)[:20]     # dataset_liに登録されている論文タイトルの重複なしリストを作る
     count_papers(papers_title_list,dataset_papers_li)
     found_papers(papers_title_list,dataset_papers_li)
     print_counts()
@@ -66,11 +64,10 @@ def found_papers(titles:list, papers:list):
     for title in titles:
         id += 1
         matched_papers = []
-        # 部分一致
+
         for p in papers:
-            if p["title"]:
-                if title in p["title"] or p["title"] in title:
-                    matched_papers.append(p)
+            if title == p["title"]:
+                matched_papers.append(p)
 
         if len(matched_papers) == 1:
             print(f"\n{id}=== Found {len(matched_papers)} paper(s) for: {title} ===")
@@ -78,13 +75,11 @@ def found_papers(titles:list, papers:list):
         elif len(matched_papers) > 1:
             print(f"Many match papers:{title}")
             counts["many_match"] += 1
-            if not DRY_RUN:
-                save_many_match_papers(title)
+            save_many_match_papers(title)
         else:
             print(f"Not found in JSON: {title}")
             counts["not_found"] += 1
-            if not DRY_RUN:
-                save_not_found_papers(title)
+            save_not_found_papers(title)
 
 
 def print_papers(papers):
@@ -157,8 +152,7 @@ def download_pdf(paper):
     if not pdf_url:
         print("No PDF available.")
         counts["no_url"] += 1
-        if not DRY_RUN:
-            save_no_pdf_url(paper.get("title"))
+        save_no_pdf_url(paper.get("title"))
         return
     safe_title = re.sub(r'[\\/*?:"<>|]', "_", paper["title"])
     filepath = os.path.join(PDF_DIR, f"{safe_title}.pdf")
@@ -170,9 +164,6 @@ def download_pdf(paper):
         return
 
     counts["download"] += 1
-    if DRY_RUN:
-        print(f"[dry-run] Would download: {pdf_url}")
-        return
 
     try:
         rsp = requests.get(pdf_url)
@@ -189,7 +180,7 @@ def download_pdf(paper):
 
 def print_counts():
     """found_papers の結果の内訳を表示"""
-    print("\n=== 集計" + ("（dry-run: ダウンロードしていません）" if DRY_RUN else "") + " ===")
+    print("\n=== 集計 ===")
     print("JSONに見つからない：", counts["not_found"])
     print("部分一致で複数ヒット：", counts["many_match"])
     print("PDFのURLなし：", counts["no_url"])

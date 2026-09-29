@@ -37,7 +37,7 @@ def reading_dataset_json():
 
 def reading_extracted_urls_json():
     """ json ファイルの読み込み"""
-    with open("data/intermediate/no_kagikakko_extracted_urls.json") as f:
+    with open("data/intermediate/perfect_extracted_urls.json") as f:
     # with open("/workspace/2025-0829-making_dataset/extracted_urls.json") as f:
     # with open("/mnt/ssd/研究/2025-0829-making_dataset/extracted_urls.json") as f:
     # with open("data/intermediate/no_kagikakko_extracted_urls.json") as f:

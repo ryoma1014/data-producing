@@ -18,9 +18,7 @@ def main():
     DATASET_PATH = "data/intermediate/labelled.csv"
 
     with open("data/input/datasets_JST202508081105.json") as f:
-    # with open("/mnt/ssd/研究/PapersWithCodeDatasets_dataset20250808/datasets_JST202508081105.json") as f:
-    # with open("/mnt/c/users/okada/Desktop/松原研究室B4/研究/PapersWithCodeDatasets_papers20250808/datasets_JST202508081105.json") as f:
-        datasetjson_li: list[dict] = json.load(f)
+       datasetjson_li: list[dict] = json.load(f)
     # データセットに正例追加
     json_keys = ["id", "name", "homepage", "paper_title", "label"]             # json ファイルから欲しい key を取得・ココナに取得すればいいかわからん
     with open(DATASET_PATH, "w", newline="", encoding="utf-8") as f:
