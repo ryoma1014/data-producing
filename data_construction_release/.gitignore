@@ -1,6 +1,7 @@
 data/input/
 data/pdf/
 data/mmd/
+data/xml/
 data/intermediate/
 data/logs/
 __pycache__/
