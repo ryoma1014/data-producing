@@ -1,7 +1,5 @@
 # Constructing a Dataset of Research Data Publication URLs
 
-[日本語版 / Japanese version](README_JA.md)
-
 This directory contains code for constructing a dataset of URLs and their surrounding text extracted from scholarly papers reporting the production of research data (data-producing papers). Each URL is labeled according to whether it indicates the publication location of the research data corresponding to the given paper.
 
 ## 1. Workflow and Script Descriptions
@@ -66,8 +64,8 @@ Place the following JSON files in `data/input/`.
 
 | Input data | Current filename | Download link |
 | --- | --- | --- |
-| PWC dataset JSON | `datasets_JST202508081105.json` | [PWC dataset archive](https://huggingface.co/datasets/pwc-archive/datasets) |
-| PWC papers JSON | `papers-with-abstracts_JST202508081105.json` | [PWC papers archive](https://huggingface.co/datasets/pwc-archive/papers-with-abstracts) |
+| PWC dataset JSON | `datasets_JST202508081105.json` | [PWCD dataset archive](https://huggingface.co/datasets/pwc-archive/datasets) |
+| PWC papers JSON | `papers-with-abstracts_JST202508081105.json` | [PWCD papers archive](https://huggingface.co/datasets/pwc-archive/papers-with-abstracts) |
 
 ## 3. Environment Setup
 
