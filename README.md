@@ -10,7 +10,7 @@ This directory contains code for constructing a dataset of URLs and their surrou
 flowchart TD
     A[PWCD datasets JSON] --> B[01 Download PDFs]
     P[PWCD papers JSON] --> B
-    B --> C[[PDF]]
+    B --> C(PDF)
     C --> N[Convert PDFs to MMD with Nougat]
     N --> E[02 Extract URLs]
     E --> L[03 Label URLs]
@@ -27,7 +27,7 @@ flowchart TD
     J --> D[CSV of URLs and their surrounding text]
 ```
 
-All paths below are relative to this directory. PWCD refers to the archived data from Papers With Code (PWC).
+All paths below are relative to the repository root, `data-producing/`. PWCD refers to the archived data from Papers With Code (PWC).
 
 | Script | Description |
 | --- | --- |
@@ -45,7 +45,7 @@ All paths below are relative to this directory. PWCD refers to the archived data
 ## 2. Directory and File Structure
 
 ```text
-data_construction_release/
+data-producing/
 ├── .gitignore
 ├── README.md                 # English README
 ├── README_JA.md              # Japanese README
@@ -78,7 +78,7 @@ Place the following JSON files in `data/input/`.
 
 ## 4. Execution Procedure
 
-Use `data_construction_release/` as the working directory and check the output of each stage before proceeding.
+Use the repository root, `data-producing/`, as the working directory and check the output of each stage before proceeding.
 
 1. **Prepare the input data:** Place the two PWC JSON files in `data/input/`.
 2. **Obtain and convert the papers:** Download PDFs with `01_download_pdfs.py`, convert them to MMD with Nougat, and save the MMD files in `data/mmd/`. Also start the GROBID service, generate XML with `grobid.py`, and save it in `data/xml/`.
