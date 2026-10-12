@@ -76,7 +76,6 @@ def combine(labels, contexts, nlp=None, url_mode="normalized"):
             row["Passage-title"] = json.dumps(context.get("Passage-title", []), ensure_ascii=False)
             for key in ("Citation-sentence", "Citation-info", "Citation-paragraph", "Citation-type"):
                 row[key] = context.get(key, "")
-            row["Source-URL"] = context.get("URL", "")
             if nlp is None:
                 row["Context-three-sentences"] = ""
                 status = "not_computed"
@@ -112,7 +111,7 @@ def main():
     result, report = combine(labels, contexts, nlp=nlp, url_mode=args.url_mode)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with args.out.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=label_fields + CONTEXT_FIELDS + ["Source-URL"])
+        writer = csv.DictWriter(f, fieldnames=label_fields + CONTEXT_FIELDS)
         writer.writeheader()
         writer.writerows(result)
     args.report.parent.mkdir(parents=True, exist_ok=True)

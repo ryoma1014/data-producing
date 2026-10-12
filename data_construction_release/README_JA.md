@@ -2,24 +2,23 @@
 
 [English version / 英語版](README.md)
 
-このディレクトリには、論文に記載された URL とその周辺文を収集し、研究データの公開先かどうかのラベルを付けたデータセットを作成するコードがあります。ラベル付けには Papers with Code（PWC）の登録情報を使い、論文 PDF のテキスト化には Nougat、参考文献の解析には GROBID を使います。
+このディレクトリには、論文に出現した URL とその周辺情報を収集し、その論文で作成が報じられた研究データの公開先かどうかを付与したデータセットを作成するコードがあります。
 
 ## 1. 全体の流れと各コードの役割
 
 ```mermaid
 flowchart TD
-    A[PWC datasets JSON] --> B[01 PDF 取得]
-    P[PWC papers JSON] --> B
-    B --> C[PDF]
-    C --> N[Nougat]
-    N --> M[MMD]
-    M --> E[02 URL 抽出]
+    A[PWCD datasets JSON] --> B[01 PDF 取得]
+    P[PWCD papers JSON] --> B
+    B --> C[[PDF]]
+    C --> N[NougatでMMD変換]
+    N --> E[02 URL 抽出]
     E --> L[03 ラベル付け]
     A --> L
     L --> Y[04 公開日付加]
     P --> Y
-    M --> F[05 MMD 周辺情報抽出]
-    C --> G[GROBID]
+    N --> F[05 MMD 周辺情報抽出]
+    C --> G[GROBIDでXML変換]
     G --> X[06 参考文献解析]
     F --> R[07 参考文献の周辺情報補完]
     X --> R
@@ -30,7 +29,7 @@ flowchart TD
 
 以下のパスはこのディレクトリからの相対パスです。
 
-| スクリプト | 役割・入出力・現在の動作 |
+| スクリプト | 説明 |
 | --- | --- |
 | [`01_download_pdfs.py`](scripts/01_download_pdfs.py) | **論文PDFをダウンロードするためのプログラム。** 2 種の PWCD JSON を読み、データセット側の論文タイトルを papers 側と 完全一致で照合し、論文PDFを `data/pdf/` へ保存する。未一致・複数一致・URL なし・失敗を `data/logs/{not_found,many_match,no_url,failed_download}.json` に記録する。|
 | [`02_extract_urls.py`](scripts/02_extract_urls.py) | **論文テキストから、データセットの候補となるURLを抽出するプログラム。** `data/mmd/` 直下の `*.mmd` を読み、`data/intermediate/extracted_urls.json` を `{ファイル名: [URL, ...]}` で出力する。|
@@ -50,7 +49,6 @@ data_construction_release/
 ├── .gitignore
 ├── README.md                 # 英語版 README
 ├── README_JA.md              # 日本語版 README
-├── REVIEW_JA.md              # コードのレビュー記録
 ├── requirements.txt         # Python の依存パッケージ
 ├── scripts/                 # 上表のスクリプト
 └── data/
@@ -64,12 +62,12 @@ data_construction_release/
 
 ### 入力データと配布先
 
-次の JSON を `data/input/` に配置します。ファイル名を変更する場合は、スクリプト内の入力パスも合わせて変更してください。
+次の JSON を `data/input/` に配置します。
 
 | 入力データ | 現在のファイル名 | 配布先リンク記入欄 |
 | --- | --- | --- |
-| PWC dataset JSON | `datasets_JST202508081105.json` | ［外部 GitHub リポジトリの URL をここに記入］ |
-| PWC papers JSON | `papers-with-abstracts_JST202508081105.json` | ［外部 GitHub リポジトリの URL をここに記入］ |
+| PWC dataset JSON | `datasets_JST202508081105.json` | ［https://huggingface.co/datasets/pwc-archive/datasets］ |
+| PWC papers JSON | `papers-with-abstracts_JST202508081105.json` | ［https://huggingface.co/datasets/pwc-archive/papers-with-abstracts］ |
 
 ## 3. 環境構築
 
@@ -100,13 +98,16 @@ PDF・MMD・XML は、同じ論文のファイル名を拡張子以外で揃え�
 | URL とラベル | `homepage`、`label`：判定対象の URL と、PWC の登録情報に基づく `Produce` / `nonProduce` ラベル。 |
 | 出現箇所 | `Passage-title`、`Citation-type`：節見出しと、本文・脚注・参考文献の区分。 |
 | 周辺テキスト | `Citation-sentence`、`Citation-paragraph`、`Context-three-sentences`：URL または引用を含む文・段落と、同じ段落内の前後文。 |
-| 引用・抽出情報 | `Citation-info`、`Source-URL`：脚注・参考文献の情報と、周辺情報側で抽出された URL。 |
+| 引用・抽出情報 | `Citation-info`：脚注・参考文献の情報。 |
 
-`Produce` はその論文の研究データ公開先として PWC に登録された URL、`nonProduce` は分類処理で負例とされたその他の URL を表します。周辺情報と結合できなかった行は最終 CSV に含まれず、その記録は `combine_report.json` で確認できます。
+`Produce` はその論文で作成を報じられた研究データの公開先として PWCD に登録された URL、`nonProduce` は分類処理で負例とされたその他の URL を表します。周辺情報と結合できなかった行は最終 CSV に含まれず、その記録は `combine_report.json` で確認できます。
 
 `data/intermediate/` には、各処理段階の CSV・JSON と、参考文献補完の結果を記録する `reference_merge_report.json` も保存されます。
 
 ## 6. 本コードを使用した研究論文
 
-- **論文情報（題名・著者・掲載先・年）：** ［ここに記入］
-- **論文 URL または DOI：** ［論文へのリンクをここに記入］
+- **題名：** Where Are Research Data Published? Identifying Their Publication URLs in Scholarly Papers
+- **著者：** Ryoma Okada, Koshi Motegi, Koichiro Ito, Shigeki Matsubara
+- **掲載先：** Proceedings of the 28th International Conference on Asia-Pacific Digital Libraries（[ICADL 2026](https://icadl.net/icadl2026/)）（掲載予定）
+- **年：** 2026
+- **論文 URL または DOI：** ［確認後に論文 URL または DOI をここに記入］
