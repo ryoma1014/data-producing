@@ -25,14 +25,6 @@ def main():
 
 
 def extract_urls_from_mmd(folder_path: str):
-    """
-    指定フォルダ内の .mmd ファイルを読み込み、URLを抽出する関数
-    
-    Parameters
-    ----------
-    folder_path : str
-        .mmdファイルが入っているフォルダのパス
-    """
 
     url_pattern = re.compile(r'((https?|ftp)://(?:www\.)?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:/[^\s()]*)?(?<!\.))')
 
@@ -83,7 +75,7 @@ def modify_url(url: str, text: str) -> str:
 
 
 def writing_dataset_json(dataset_di):
-    with open("data/intermediate/perfect_extracted_urls.json", "w") as f:
+    with open("data/intermediate/extracted_urls.json", "w") as f:
         json.dump(dataset_di, f, indent=4, ensure_ascii=False)
     return
 

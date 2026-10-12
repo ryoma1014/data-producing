@@ -11,13 +11,11 @@ def main():
     write_csv("data/intermediate/labelled_with_year.csv",add_year_list)
 
 def reading_json(file_path: str):
-    """ json ファイルの読み込み"""
     with open(file_path, 'r',encoding='utf-8') as f:
         dataset_li = json.load(f)
     return dataset_li
 
 def reading_csv(file_path: str):
-    """ csv ファイルの読み込み"""
     with open(file_path, 'r',encoding='utf-8') as f:
         reader = csv.reader(f)      
         dataset_li = [row for row in reader]
@@ -39,7 +37,6 @@ def add_year(json_li,csv_li):
     return new_csv_li
 
 def write_csv(file_path: str, data: list):
-    """ csv ファイルの書き込み"""
     json_keys = ["id", "name", "homepage", "paper_title", "year", "label"] 
     with open(file_path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=json_keys,quoting=csv.QUOTE_NONNUMERIC)

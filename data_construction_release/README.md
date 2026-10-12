@@ -22,37 +22,37 @@ flowchart TD
     A --> L
     L --> Y[04 Add publication dates]
     P --> Y
-    M --> F[07 Parse MMD context]
+    M --> F[05 Parse MMD context]
     C --> G[GROBID API / grobid.py]
-    G --> X[08 Parse TEI references]
-    F --> R[09 Enrich reference context]
+    G --> X[06 Parse TEI references]
+    F --> R[07 Enrich reference context]
     X --> R
-    Y --> J[10 Join labels and contexts]
+    Y --> J[08 Join labels and contexts]
     R --> J
-    J --> S[11 Create candidate split]
-    J --> V[12 Validate outputs]
+    J --> S[09 Create candidate split]
+    J --> V[10 Validate outputs]
     S --> V
 ```
 
-All paths below are relative to this directory. `making_dataset.py` is an optional preliminary export; `05` and `06` are historical diagnostics, omitted from the normal execution sequence.
+All paths below are relative to this directory. `making_dataset.py` is an optional preliminary export.
 
 | Script | Purpose, inputs, and outputs |
 | --- | --- |
-| [`making_dataset.py`](scripts/making_dataset.py) | Reads `data/input/datasets_JST202508081105.json`, exports `data/intermediate/pwc_pairs.csv` with `id,name,homepage,paper_title,label`, labeling every exported row `Produce`. Prefers `paper` when both paper fields exist. Also supplies loading/unique-title functions to `01`. Its CSV is not read by subsequent stages. |
-| [`01_download_pdfs.py`](scripts/01_download_pdfs.py) | Reads both PWC JSON files, matches unique dataset paper titles to papers by **exact title equality**, and downloads `url_pdf` into `data/pdf/`. **Processes only the first 20 titles by default.** Logs missing/ambiguous titles, missing URLs, and failures in `data/logs/{not_found,many_match,no_url,failed_download}.json`. Requires HTTP 200 and PDF content type; skips existing filenames. Old substring-matching comments do not reflect the code. |
-| [`02_extract_urls.py`](scripts/02_extract_urls.py) | Reads only top-level `data/mmd/*.mmd`. Writes `data/intermediate/perfect_extracted_urls.json` as `{filename_stem: [URL, ...]}`. Regex extracts HTTP(S)/FTP URLs, `modify_url` tries to extend broken URLs, edge punctuation is removed, URLs are deduplicated, then trimmed at the first parenthesis. This last trimming can introduce duplicates. No surrounding text is written. |
-| [`making_dataset_produce_or_not_url_classify.py`](scripts/making_dataset_produce_or_not_url_classify.py) | Reads datasets JSON and `perfect_extracted_urls.json`; provides classification functions imported by `03`. Titles **and URLs** are lowercased after removing every non-ASCII-alphanumeric character, then compared for equality. Running directly prints statistics; it does not write a dataset file. |
-| [`03_label_urls.py`](scripts/03_label_urls.py) | Uses that classifier to write `data/intermediate/labelled.csv`, columns `id,name,homepage,paper_title,label`. Positive (`Produce`) rows retain PWC homepages; negatives (`nonProduce`) retain extracted URLs and a blank dataset name. Negatives are kept only for papers with at least one positive. See section 7 for label/duplicate caveats. |
-| [`04_add_year.py`](scripts/04_add_year.py) | Joins `labelled.csv` to papers JSON by original title **exact equality**. Writes `data/intermediate/labelled_with_year.csv`, columns `id,name,homepage,paper_title,year,label`. Unmatched rows are dropped. `year` contains the full `date` string, normally `YYYY-MM-DD`, rather than the year alone. |
-| [`05_context_diagnostic_incomplete.py`](scripts/05_context_diagnostic_incomplete.py) | Reads the dated CSV and **`data/input/pt_cs_ci_dict_output.json`**, unlike `07`'s output path. Counts title matches after removing punctuation but preserving spaces/case. URL matching and CSV writing are unfinished. The declared `context_diagnostic_unused.csv` is not written. |
-| [`06_split_diagnostic_incomplete.py`](scripts/06_split_diagnostic_incomplete.py) | Reads the dated CSV, sorts distinct papers by date, reserves latest 10% for a test group, attempts to exclude a fixed list of 20 titles from the rest, and prints up to 100 papers sampled across years (seed 42). Dev splitting and output writers are commented out. No train/dev/test files are written. |
-| [`07_parse_mmd_context.py`](scripts/07_parse_mmd_context.py) | Recursively reads `data/mmd/`; writes `data/intermediate/pt_cs_ci_dict_output.json`. Splits at blank lines, tracks Markdown headings, segments sentences with spaCy, heuristically links `Footnote N:` to nearby body references, expands URLs into records, classifies `Body`/`Footnote`/`Reference`, and inserts citation tags. Requires `en_core_web_trf`; calls `spacy.require_gpu()` unless `DATASET_PARSER_CPU=1`. |
-| [`grobid.py`](scripts/grobid.py) | POSTs PDFs as multipart field `input` to `http://localhost:8070/api/processFulltextDocument`, saving full-text TEI XML with corresponding PDF stems. Current source uses fixed `/workspace/...` input/output paths, creates an unrelated `/mnt/ssd/研究/xml` directory, and accesses `input_files[0]` even when no PDFs exist. Apply section 4's path edits before running elsewhere. Imports `tqdm`, absent from `requirements.txt`. |
-| [`08_parse_tei_references.py`](scripts/08_parse_tei_references.py) | Recursively reads `data/xml/`; writes `data/intermediate/xml_ref_dict.json`. Resolves TEI `listBibl/biblStruct`, `ptr target`, and body `ref type="bibr"` links to extract in-text sentence/paragraph/headings and bibliography fields. Its heading key is `Paragraph-title`. Requires the same model/CPU setting as `07`. Active XML parsing uses ElementTree; the lxml alternative is commented out, but lxml is still imported. |
-| [`09_add_reference_info.py`](scripts/09_add_reference_info.py) | Reads `pt_cs_ci_dict_output.json` and `xml_ref_dict.json`; writes `data/intermediate/url_around_info.json` and `reference_merge_report.json`. Enriches only existing MMD `Reference` records. Titles use exact matching with normalized fallback; URLs require **exact string equality**. Multiple TEI contexts expand a record; unmatched MMD records remain. XML-only URLs are not newly added. |
-| [`10_combine_context.py`](scripts/10_combine_context.py) | Joins `labelled_with_year.csv` with `url_around_info.json`; writes `data/intermediate/dataset_with_context.csv` and `combine_report.json`. Titles use exact matching with normalized fallback; default URL matching uses classifier normalization. Every matching context occurrence produces a row. Adds the target sentence and neighbors from the same paragraph; paragraph boundaries yield fewer than three sentences. Unmatched label rows are omitted and reported. |
-| [`11_split_candidate.py`](scripts/11_split_candidate.py) | Reads the combined CSV; writes `data/intermediate/split_candidate/{train,dev,test}.csv` and `split_report.json`. Sorts distinct papers by date, then title, allocating `max(1, round(papers * 0.1))` latest papers to test, preceding papers to dev, and the remainder to train. Requires at least three papers and valid/consistent dates. Approximate 8:1:1 is by **paper count**, not row count. This is a new candidate split and does not apply `06`'s exclusion list. |
-| [`12_validate_outputs.py`](scripts/12_validate_outputs.py) | Reads the combined CSV, all three splits, and combine report; writes `data/intermediate/validation_report.json`. Checks required columns, nonempty output, label values, nonempty title/URLs, report count, exact split partition including duplicates, and separation of papers. Structural errors exit with status 1; published-count differences alone do not. |
+| [`making_dataset.py`](scripts/making_dataset.py) | **Creates a preliminary CSV of papers and their registered dataset homepages for inspection.** Reads `data/input/datasets_JST202508081105.json`, exports `data/intermediate/pwc_pairs.csv` with `id,name,homepage,paper_title,label`, labeling every exported row `Produce`. Prefers `paper` when both paper fields exist. Also supplies loading/unique-title functions to `01`. Its CSV is not read by subsequent stages. `pwc_pairs.csv` stores dataset names, homepages, corresponding paper titles, and preliminary positive labels. |
+| [`01_download_pdfs.py`](scripts/01_download_pdfs.py) | **Downloads the scholarly PDFs used as source documents for the dataset.** Reads both PWC JSON files, matches unique dataset paper titles to papers by **exact title equality**, and downloads `url_pdf` into `data/pdf/`. **Processes only the first 20 titles by default.** Logs missing/ambiguous titles, missing URLs, and failures in `data/logs/{not_found,many_match,no_url,failed_download}.json`. Requires HTTP 200 and PDF content type; skips existing filenames. Old substring-matching comments do not reflect the code. The saved PDFs contain the full papers used as source material. Each log JSON stores affected paper titles and, for failed downloads, the attempted URL. |
+| [`02_extract_urls.py`](scripts/02_extract_urls.py) | **Extracts candidate URLs from the paper text for inclusion in the dataset.** Reads only top-level `data/mmd/*.mmd`. Writes `data/intermediate/perfect_extracted_urls.json` as `{filename_stem: [URL, ...]}`. Regex extracts HTTP(S)/FTP URLs, `modify_url` tries to extend broken URLs, edge punctuation is removed, URLs are deduplicated, then trimmed at the first parenthesis. This last trimming can introduce duplicates. No surrounding text is written. The output JSON stores a list of URLs extracted from the body, footnotes, and bibliography for each paper. |
+| [`making_dataset_produce_or_not_url_classify.py`](scripts/making_dataset_produce_or_not_url_classify.py) | **Checks extracted URLs against PWC records to determine whether they match a research dataset's publication URL.** Reads datasets JSON and `perfect_extracted_urls.json`; provides classification functions imported by `03`. Titles **and URLs** are lowercased after removing every non-ASCII-alphanumeric character, then compared for equality. Running directly prints statistics; it does not write a dataset file. |
+| [`03_label_urls.py`](scripts/03_label_urls.py) | **Assigns publication-URL labels to the URLs and saves the labeled examples as a CSV.** Uses that classifier to write `data/intermediate/labelled.csv`, columns `id,name,homepage,paper_title,label`. Positive (`Produce`) rows retain PWC homepages; negatives (`nonProduce`) retain extracted URLs and a blank dataset name. Negatives are kept only for papers with at least one positive. See section 7 for label/duplicate caveats. `labelled.csv` stores each URL's paper title, dataset name, and publication-URL label. |
+| [`04_add_year.py`](scripts/04_add_year.py) | **Adds each paper's publication date to the URL examples so they can be split chronologically.** Joins `labelled.csv` to papers JSON by original title **exact equality**. Writes `data/intermediate/labelled_with_year.csv`, columns `id,name,homepage,paper_title,year,label`. Unmatched rows are dropped. `year` contains the full `date` string, normally `YYYY-MM-DD`, rather than the year alone. `labelled_with_year.csv` stores the labeled URL records with each paper's publication date added. |
+| [`05_parse_mmd_context.py`](scripts/05_parse_mmd_context.py) | **Extracts the sentences, paragraphs, section headings, and footnote information surrounding URLs in the paper text.** Recursively reads `data/mmd/`; writes `data/intermediate/pt_cs_ci_dict_output.json`. Splits at blank lines, tracks Markdown headings, segments sentences with spaCy, heuristically links `Footnote N:` to nearby body references, expands URLs into records, classifies `Body`/`Footnote`/`Reference`, and inserts citation tags. Requires `en_core_web_trf`; calls `spacy.require_gpu()` unless `DATASET_PARSER_CPU=1`. The output JSON groups URL records by paper, storing the containing sentence, paragraph, headings, footnote information, and citation type. |
+| [`grobid.py`](scripts/grobid.py) | **Converts paper PDFs into structured XML to provide input for reference analysis.** POSTs PDFs as multipart field `input` to `http://localhost:8070/api/processFulltextDocument`, saving full-text TEI XML with corresponding PDF stems. Current source uses fixed `/workspace/...` input/output paths, creates an unrelated `/mnt/ssd/研究/xml` directory, and accesses `input_files[0]` even when no PDFs exist. Apply section 4's path edits before running elsewhere. Imports `tqdm`, absent from `requirements.txt`. The output XML stores structured paper text, section headings, bibliography entries, and their links to in-text citations. |
+| [`06_parse_tei_references.py`](scripts/06_parse_tei_references.py) | **Links bibliography URLs to the body sentences and paragraphs that cite them.** Recursively reads `data/xml/`; writes `data/intermediate/xml_ref_dict.json`. Resolves TEI `listBibl/biblStruct`, `ptr target`, and body `ref type="bibr"` links to extract in-text sentence/paragraph/headings and bibliography fields. Its heading key is `Paragraph-title`. Requires the same model/CPU setting as `05`. Active XML parsing uses ElementTree; the lxml alternative is commented out, but lxml is still imported. The output JSON groups records by paper, storing bibliography URLs, bibliographic details, and the body sentences, paragraphs, and headings associated with their citations. |
+| [`07_add_reference_info.py`](scripts/07_add_reference_info.py) | **Enriches the context of bibliography URLs with their in-text citation information.** Reads `pt_cs_ci_dict_output.json` and `xml_ref_dict.json`; writes `data/intermediate/url_around_info.json` and `reference_merge_report.json`. Enriches only existing MMD `Reference` records. Titles use exact matching with normalized fallback; URLs require **exact string equality**. Multiple TEI contexts expand a record; unmatched MMD records remain. XML-only URLs are not newly added. `url_around_info.json` stores the enriched URL contexts; `reference_merge_report.json` stores match counts and information about unmatched references and papers. |
+| [`08_combine_context.py`](scripts/08_combine_context.py) | **Combines URL labels and publication dates with surrounding text to assemble the dataset of contextual examples.** Joins `labelled_with_year.csv` with `url_around_info.json`; writes `data/intermediate/dataset_with_context.csv` and `combine_report.json`. Titles use exact matching with normalized fallback; default URL matching uses classifier normalization. Every matching context occurrence produces a row. Adds the target sentence and neighbors from the same paragraph; paragraph boundaries yield fewer than three sentences. Unmatched label rows are omitted and reported. `dataset_with_context.csv` stores paper titles, dates, labels, surrounding text, and footnote or bibliography information for each matching URL occurrence. `combine_report.json` stores join counts, unmatched rows, and three-sentence context recovery statuses. |
+| [`09_split_candidate.py`](scripts/09_split_candidate.py) | **Splits the constructed dataset into training, development, and test sets in paper publication-date order.** Reads the combined CSV; writes `data/intermediate/split_candidate/{train,dev,test}.csv` and `split_report.json`. Sorts distinct papers by date, then title, allocating `max(1, round(papers * 0.1))` latest papers to test, preceding papers to dev, and the remainder to train. Requires at least three papers and valid/consistent dates. Approximate 8:1:1 is by **paper count**, not row count. This is a new candidate split and does not apply the historical exclusion list. `train.csv`, `dev.csv`, and `test.csv` store the contextual URL records assigned to each subset. `split_report.json` stores paper, row, and positive counts and date ranges for each split. |
+| [`10_validate_outputs.py`](scripts/10_validate_outputs.py) | **Checks the format and consistency of the constructed dataset and its splits.** Reads the combined CSV, all three splits, and combine report; writes `data/intermediate/validation_report.json`. Checks required columns, nonempty output, label values, nonempty title/URLs, report count, exact split partition including duplicates, and separation of papers. Structural errors exit with status 1; published-count differences alone do not. `validation_report.json` stores detected structural errors, actual counts, comparisons with published counts, label totals, and unmatched-row counts. |
+
+Note: `09_split_candidate.py` and `10_validate_outputs.py` are currently absent from `scripts/`. Their two rows above describe the output specifications documented in the existing README.
 
 ## 2. Inputs and directory layout
 
@@ -116,11 +116,11 @@ These examples use **Python 3.10 and CPU parsing** as a starting point, not the 
 | Dependency | Purpose |
 | --- | --- |
 | `requests` | Download PDFs and contact GROBID |
-| `pandas` | CSV processing in `03`; also imported by `07`/`08` |
-| `scikit-learn` | Historical diagnostic `06` |
-| `spacy`, `spacy-transformers` | Sentence segmentation in `07`/`08`/`10` |
+| `pandas` | CSV processing in `03`; also imported by `05`/`06` |
+| `scikit-learn` | Retained in `requirements.txt`; not used by the current scripts |
+| `spacy`, `spacy-transformers` | Sentence segmentation in `05`/`06`/`08` |
 | `en_core_web_trf` | Separately downloaded English transformer model |
-| `lxml` | Import in `08`, including its inactive alternative parser |
+| `lxml` | Import in `06`, including its inactive alternative parser |
 | `tqdm` | GROBID progress display; install separately |
 | `nougat-ocr` | External PDF-to-MMD CLI in a separate environment |
 | Docker + GROBID image | External PDF-to-TEI service, not a pip dependency |
@@ -160,7 +160,7 @@ export PYTHONUTF8=1
 export DATASET_PARSER_CPU=1
 ```
 
-Install the model in the **same environment** as the scripts, as documented by [spaCy](https://spacy.io/usage/models). `PYTHONUTF8=1` covers historical `open()` calls without an explicit encoding. The CPU variable prevents `07`/`08` from requiring a GPU. CPU execution may be slow. In later sessions, return to this directory and reset both variables. Explicit `.venv/bin/python` paths mean activation is unnecessary.
+Install the model in the **same environment** as the scripts, as documented by [spaCy](https://spacy.io/usage/models). `PYTHONUTF8=1` covers historical `open()` calls without an explicit encoding. The CPU variable prevents `05`/`06` from requiring a GPU. CPU execution may be slow. In later sessions, return to this directory and reset both variables. Explicit `.venv/bin/python` paths mean activation is unnecessary.
 
 ### 3.2 Native Windows (PowerShell)
 
@@ -192,7 +192,7 @@ Reset `$Python` and the variables in each new terminal. Explicit executable path
 
 ### 3.3 Optional GPU parsing
 
-For GPU use in `07`/`08`, configure compatible NVIDIA drivers, PyTorch, and CuPy/spaCy CUDA dependencies using the official [PyTorch](https://pytorch.org/get-started/locally/), [spaCy GPU](https://spacy.io/usage#gpu), and [CuPy](https://docs.cupy.dev/en/stable/install.html) installation guides. The repository requirements do not supply the GPU setup. Verify it in the main environment, then remove the CPU override:
+For GPU use in `05`/`06`, configure compatible NVIDIA drivers, PyTorch, and CuPy/spaCy CUDA dependencies using the official [PyTorch](https://pytorch.org/get-started/locally/), [spaCy GPU](https://spacy.io/usage#gpu), and [CuPy](https://docs.cupy.dev/en/stable/install.html) installation guides. The repository requirements do not supply the GPU setup. Verify it in the main environment, then remove the CPU override:
 
 ```bash
 .venv/bin/python -c "import torch, spacy; print('torch CUDA:', torch.cuda.is_available()); spacy.require_gpu(); print('spaCy GPU ready')"
@@ -206,7 +206,7 @@ PowerShell:
 Remove-Item Env:DATASET_PARSER_CPU -ErrorAction SilentlyContinue
 ```
 
-`10` loads its model without explicitly selecting GPU. `DATASET_PARSER_CPU` is used only by `07`/`08`; it does not select the Nougat device.
+`08` loads its model without explicitly selecting GPU. `DATASET_PARSER_CPU` is used only by `05`/`06`; it does not select the Nougat device.
 
 ## 4. Source adjustments before a full run
 
@@ -238,7 +238,7 @@ Keep the local server URL when it is reachable on port 8070. These path edits wo
 
 ## 5. Execution from scratch
 
-Check each stage's output before advancing. Do not run all numbered files with a wildcard: `05`/`06` are unfinished diagnostics, and Nougat/GROBID must run between Python stages.
+Check each stage's output before advancing. Do not run all numbered files with a wildcard: Nougat/GROBID must run between Python stages.
 
 ### 5.1 Optional PWC export and PDF download
 
@@ -294,7 +294,7 @@ Expected outputs are `data/intermediate/perfect_extracted_urls.json`, `labelled.
 
 ```bash
 export DATASET_PARSER_CPU=1
-.venv/bin/python scripts/07_parse_mmd_context.py
+.venv/bin/python scripts/05_parse_mmd_context.py
 ```
 
 Output: `data/intermediate/pt_cs_ci_dict_output.json`. This script executes at module level, loads the model immediately, and writes the whole JSON at the end. It has no CLI options or per-paper resume support. Empty/unreadable inputs and unrecognized headings/context can reduce records relative to URL extraction.
@@ -319,12 +319,12 @@ After section 4.2's source changes:
 ```bash
 .venv/bin/python scripts/grobid.py
 ls data/xml/*.xml
-.venv/bin/python scripts/08_parse_tei_references.py
+.venv/bin/python scripts/06_parse_tei_references.py
 ```
 
 Outputs: `data/xml/<PDF stem>.xml` files and `data/intermediate/xml_ref_dict.json`. Use full-text TEI with bibliography structures and body citation links, not arbitrary XML or a reference-only export. The endpoint/multipart upload follows the [GROBID REST API](https://grobid.readthedocs.io/en/latest/Grobid-service/).
 
-If matching TEI XML already exists, put it in `data/xml/`, skip generation, and run `08`. Stop the server when finished:
+If matching TEI XML already exists, put it in `data/xml/`, skip generation, and run `06`. Stop the server when finished:
 
 ```bash
 docker stop grobid-data-construction
@@ -333,10 +333,10 @@ docker stop grobid-data-construction
 ### 5.6 Merge, split, and validate
 
 ```bash
-.venv/bin/python scripts/09_add_reference_info.py
-.venv/bin/python scripts/10_combine_context.py
-.venv/bin/python scripts/11_split_candidate.py
-.venv/bin/python scripts/12_validate_outputs.py
+.venv/bin/python scripts/07_add_reference_info.py
+.venv/bin/python scripts/08_combine_context.py
+.venv/bin/python scripts/09_split_candidate.py
+.venv/bin/python scripts/10_validate_outputs.py
 ```
 
 Final artifacts:
@@ -345,7 +345,7 @@ Final artifacts:
 - `data/intermediate/split_candidate/train.csv`, `dev.csv`, `test.csv`: candidate splits.
 - `reference_merge_report.json`, `combine_report.json`, `validation_report.json` under `data/intermediate/`; `split_report.json` under `split_candidate/`.
 
-Review section 7's reports. `12` needs all three splits and the combine report. Exit status 0 does not establish historical reproduction or context accuracy.
+Review section 7's reports. `10` needs all three splits and the combine report. Exit status 0 does not establish historical reproduction or context accuracy.
 
 ### 5.7 PowerShell execution sequence
 
@@ -363,7 +363,7 @@ $env:DATASET_PARSER_CPU = "1"
 & $Python scripts/02_extract_urls.py
 & $Python scripts/03_label_urls.py
 & $Python scripts/04_add_year.py
-& $Python scripts/07_parse_mmd_context.py
+& $Python scripts/05_parse_mmd_context.py
 
 # Start Docker Desktop first.
 docker pull grobid/grobid:0.9.1-full
@@ -372,26 +372,26 @@ docker logs grobid-data-construction
 Invoke-RestMethod -Uri http://localhost:8070/api/isalive
 # Wait for successful initialization before sending PDFs.
 & $Python scripts/grobid.py
-& $Python scripts/08_parse_tei_references.py
-& $Python scripts/09_add_reference_info.py
-& $Python scripts/10_combine_context.py
-& $Python scripts/11_split_candidate.py
-& $Python scripts/12_validate_outputs.py
+& $Python scripts/06_parse_tei_references.py
+& $Python scripts/07_add_reference_info.py
+& $Python scripts/08_combine_context.py
+& $Python scripts/09_split_candidate.py
+& $Python scripts/10_validate_outputs.py
 $LASTEXITCODE
 docker stop grobid-data-construction
 ```
 
 ### 5.8 Optional MMD-only variant
 
-Without TEI, after `04` and `07` use:
+Without TEI, after `04` and `05` use:
 
 ```bash
-.venv/bin/python scripts/10_combine_context.py --contexts data/intermediate/pt_cs_ci_dict_output.json
-.venv/bin/python scripts/11_split_candidate.py
-.venv/bin/python scripts/12_validate_outputs.py
+.venv/bin/python scripts/08_combine_context.py --contexts data/intermediate/pt_cs_ci_dict_output.json
+.venv/bin/python scripts/09_split_candidate.py
+.venv/bin/python scripts/10_validate_outputs.py
 ```
 
-This skips `08`/`09`, retaining MMD bibliography context rather than TEI body citations. Record the variant. Default output names are identical, so preserve both runs in separate working copies or supply custom paths.
+This skips `06`/`07`, retaining MMD bibliography context rather than TEI body citations. Record the variant. Default output names are identical, so preserve both runs in separate working copies or supply custom paths.
 
 ## 6. Output fields and CLI options
 
@@ -401,7 +401,7 @@ The combined CSV keeps `id,name,homepage,paper_title,year,label` and appends:
 | --- | --- |
 | `Passage-title` | Heading hierarchy, serialized as a JSON list in a CSV cell. |
 | `Citation-sentence` | Sentence containing the URL or its footnote/reference citation. |
-| `Citation-info` | Footnote or bibliography information; normally empty for body URLs. `08` renders bibliography dictionaries as Python dictionary strings, not JSON objects. |
+| `Citation-info` | Footnote or bibliography information; normally empty for body URLs. `06` renders bibliography dictionaries as Python dictionary strings, not JSON objects. |
 | `Citation-paragraph` | Paragraph containing the sentence/citation. |
 | `Citation-type` | `Body`, `Footnote`, or `Reference`. |
 | `Context-three-sentences` | Target sentence and neighbors within the same paragraph; falls back to the target sentence on matching failure. |
@@ -409,16 +409,16 @@ The combined CSV keeps `id,name,homepage,paper_title,year,label` and appends:
 
 A positive `homepage` can differ textually from `Source-URL`. Tags include `[Cite]`, `[Cite_Ref]`, and `[Cite_Footnote_N]`. `id` is inherited from labels and repeats when one label expands to multiple contexts; it is not occurrence-unique.
 
-Only `09`–`12` expose argparse options. Use `.venv/bin/python scripts/<name>.py --help` (PowerShell: `& $Python ...`). Do not pass `--help` to `07`/`08`/`grobid.py`, which execute at module level.
+Only `07`–`10` expose argparse options. Use `.venv/bin/python scripts/<name>.py --help` (PowerShell: `& $Python ...`). Do not pass `--help` to `05`/`06`/`grobid.py`, which execute at module level.
 
 | Script | Options |
 | --- | --- |
-| `09_add_reference_info.py` | `--mmd`, `--xml`, `--out`, `--report` |
-| `10_combine_context.py` | `--labels`, `--contexts`, `--out`, `--report`, `--url-mode normalized\|exact\|legacy-substring`, `--skip-three-sentences` |
-| `11_split_candidate.py` | `--input`, `--out-dir` |
-| `12_validate_outputs.py` | `--combined`, `--split-dir`, `--combine-report`, `--report` |
+| `07_add_reference_info.py` | `--mmd`, `--xml`, `--out`, `--report` |
+| `08_combine_context.py` | `--labels`, `--contexts`, `--out`, `--report`, `--url-mode normalized\|exact\|legacy-substring`, `--skip-three-sentences` |
+| `09_split_candidate.py` | `--input`, `--out-dir` |
+| `10_validate_outputs.py` | `--combined`, `--split-dir`, `--combine-report`, `--report` |
 
-`10` defaults to normalized URL equality. `exact` compares identical strings; `legacy-substring` tests whether the labeled homepage occurs inside the context URL. These change the join, not `03`'s labels. `--skip-three-sentences` is for structural checks and leaves the field empty. Custom paths must be carried through downstream arguments.
+`08` defaults to normalized URL equality. `exact` compares identical strings; `legacy-substring` tests whether the labeled homepage occurs inside the context URL. These change the join, not `03`'s labels. `--skip-three-sentences` is for structural checks and leaves the field empty. Custom paths must be carried through downstream arguments.
 
 ## 7. Review results and record the environment
 
@@ -430,15 +430,15 @@ Only `09`–`12` expose argparse options. Use `.venv/bin/python scripts/<name>.p
 | `split_candidate/split_report.json` | Paper/row counts, date ranges, positives, `published_row_counts_match`. |
 | `validation_report.json` | `structural_errors`, `actual_counts`, `published_counts_match`, label counts, and unmatched/context summaries. |
 
-`12` compares against 17,977 total rows, 3,185 positives, and train/dev/test counts of 13,715/1,635/2,627. Equal counts alone do not establish equal examples or split membership.
+`10` compares against 17,977 total rows, 3,185 positives, and train/dev/test counts of 13,715/1,635/2,627. Equal counts alone do not establish equal examples or split membership.
 
 Interpretation caveats:
 
 - The classifier compares every PWC homepage to every extracted URL per paper. Multiple homepages can put the same extracted URL in both classes; repeated positives/negatives remain. Positive names come from the first original-title match, not necessarily the dataset owning that homepage.
-- ASCII-alphanumeric normalization removes URL punctuation and lowercases paths, potentially conflating distinct URLs/titles. `09`/`10` reject ambiguous normalized titles in indexed mappings; earlier stages deduplicate differently.
-- `04` drops unmatched titles and retains empty dates on matched papers. `11` rejects missing/invalid/inconsistent dates.
-- `07` uses heuristics: unmatched footnotes can disappear, heading cleanup may be imperfect, and multiple footnote URLs can duplicate records. `08` skips invalid XML and can yield no context for unresolved body references. `09` only enriches existing MMD references. Inspect representative examples manually.
-- Multiple contexts and repeated labels expand the combined CSV. `12` verifies structure/partitioning, not label correctness, deduplication, context completeness, or survival of every input label.
+- ASCII-alphanumeric normalization removes URL punctuation and lowercases paths, potentially conflating distinct URLs/titles. `07`/`08` reject ambiguous normalized titles in indexed mappings; earlier stages deduplicate differently.
+- `04` drops unmatched titles and retains empty dates on matched papers. `09` rejects missing/invalid/inconsistent dates.
+- `05` uses heuristics: unmatched footnotes can disappear, heading cleanup may be imperfect, and multiple footnote URLs can duplicate records. `06` skips invalid XML and can yield no context for unresolved body references. `07` only enriches existing MMD references. Inspect representative examples manually.
+- Multiple contexts and repeated labels expand the combined CSV. `10` verifies structure/partitioning, not label correctness, deduplication, context completeness, or survival of every input label.
 
 Save installed versions, input hashes, actual Nougat command/model, GROBID image/configuration, CPU/GPU choice, and source edits:
 
@@ -475,7 +475,7 @@ Omit tools you did not use. Most JSON/CSV outputs are overwritten on rerun; pres
 | GROBID connection/HTTP error | Check Docker logs, initialization, port mapping, and memory; retry after readiness. |
 | Empty URL/context output | Check top-level MMD files, recognizable URL schemes, heading/footnote format, and full-text TEI bibliography/body links. |
 | `Ambiguous normalized title` | Inspect the named stems/titles and resolve duplicate inputs or naming collisions. |
-| `11` rejects data | At least three papers with valid dates must survive the join; review `04` and combine reports. |
-| `12` structural errors | Read the validation report and correct earlier outputs/custom paths. Published-count differences alone do not cause status 1. |
+| `09` rejects data | At least three papers with valid dates must survive the join; review `04` and combine reports. |
+| `10` structural errors | Read the validation report and correct earlier outputs/custom paths. Published-count differences alone do not cause status 1. |
 
 Both READMEs were checked against current source paths and CLI definitions. Full PDF download, Nougat inference, spaCy model execution, and GROBID processing were not run while preparing this documentation.

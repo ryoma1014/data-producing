@@ -1,11 +1,3 @@
-"""Join TEI reference contexts to MMD contexts without mutating the iterated list.
-
-This is a repaired implementation of original_additional/add_ref_info.py.
-The original compared XML Citation-info (a bibliography dictionary rendered as a
-string) to an MMD URL, then appended to the same list being iterated. Neither
-operation can reliably produce the intended one-record-per-citation result.
-"""
-
 import argparse
 import json
 import re

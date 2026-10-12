@@ -10,17 +10,14 @@ def main():
     papers_title_list = making_dataset_produce_or_not_url_classify.paper_verified_paper_nodup(dataset_li)
     print("正規化後タイトル数:", len(papers_title_list))
     title_url_dict = making_dataset_produce_or_not_url_classify.making_title_url_dict(dataset_li, papers_title_list)
-    # non_produce_url_dict= making_dataset_produce_or_not_url_classify.check_produce_url(extracted_url_di, title_url_dict)
-    # 正例追加用
     produce_url_dict,non_produce_url_dict= making_dataset_produce_or_not_url_classify.check_produce_url(extracted_url_di, title_url_dict)
 
-    # id取得
     DATASET_PATH = "data/intermediate/labelled.csv"
 
     with open("data/input/datasets_JST202508081105.json") as f:
        datasetjson_li: list[dict] = json.load(f)
     # データセットに正例追加
-    json_keys = ["id", "name", "homepage", "paper_title", "label"]             # json ファイルから欲しい key を取得・ココナに取得すればいいかわからん
+    json_keys = ["id", "name", "homepage", "paper_title", "label"]            
     with open(DATASET_PATH, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=json_keys,quoting=csv.QUOTE_ALL)
         writer.writeheader()
@@ -46,7 +43,6 @@ def main():
                             "paper_title": k_title,
                             "label":"Produce"
                         }
-                        # 論文タイトルもしくはURLがない場合はデータセットに含まない
                         if row["homepage"] == "" or row["paper_title"] == "":
                             continue 
                         id += 1
@@ -54,7 +50,7 @@ def main():
                     break
     df = pd.read_csv(DATASET_PATH)
     row, col = df.shape
-    # データセットに負例追加
+
     with open(DATASET_PATH, "a", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=json_keys,quoting=csv.QUOTE_ALL)
         id = row
@@ -67,7 +63,6 @@ def main():
                     "paper_title": k_title,
                     "label":"nonProduce"
                 }
-                # 論文タイトルもしくはURLがない場合はデータセットに含まない
                 if row["homepage"] == "" or row["paper_title"] == "":
                     continue 
                 id += 1

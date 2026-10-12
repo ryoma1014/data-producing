@@ -25,20 +25,20 @@
 
 | 元ファイル | 実際の役割 | 判断 |
 | --- | --- | --- |
-| `parser_footnote.py` | MMDを節・段落・文に分け、本文URLと脚注・参考文献URLを`pt_cs_ci_dict_output.json`へ記録 | 後期版として`07_parse_mmd_context.py`へ接続。GPU必須だった箇所にCPU実行の明示的な切替を追加し、脚注タグ生成時の未初期化変数を修正。 |
+| `parser_footnote.py` | MMDを節・段落・文に分け、本文URLと脚注・参考文献URLを`pt_cs_ci_dict_output.json`へ記録 | 後期版として`05_parse_mmd_context.py`へ接続。GPU必須だった箇所にCPU実行の明示的な切替を追加し、脚注タグ生成時の未初期化変数を修正。 |
 | `parser_footnote_copy.py` | 同種の処理の旧版。URLを`<<url>>`などで包むなど出力形式が異なる | 既定の流れには使わず、`original_additional/`に保存。後期版と混用しない。 |
-| `parser_reference.py` | TEI XMLの`biblStruct`内URLと本文の`ref type="bibr"`を照合し、引用の節・段落・文をJSON化 | `08_parse_tei_references.py`へ接続。元出力名`xml_ref_dict_not_locatebase.json`と次段の期待する`xml_ref_dict.json`の食い違いを接続。 |
-| `add_ref_info.py` | MMD側の参考文献レコードへTEI側の引用文を付ける意図 | 元コードは書誌情報文字列とURLを比較しており一致しにくい。同じリストへ反復中に追加する危険もある。`09_add_reference_info.py`で`URL`対`URL`比較に直し、追加分は反復後に挿入。元コードは保存。 |
-| `combine_csv_url_info.py` | 日付・ラベル付きCSVとURL周辺情報JSONを論文タイトル・URLで結合 | 元コードの`header.append(new_columns)`は5列を1列として追加する。URL部分文字列照合も誤一致の可能性がある。`10_combine_context.py`で列を分け、URLはラベル判定と同じ正規化照合を既定にした。元方式はオプションで指定可。 |
+| `parser_reference.py` | TEI XMLの`biblStruct`内URLと本文の`ref type="bibr"`を照合し、引用の節・段落・文をJSON化 | `06_parse_tei_references.py`へ接続。元出力名`xml_ref_dict_not_locatebase.json`と次段の期待する`xml_ref_dict.json`の食い違いを接続。 |
+| `add_ref_info.py` | MMD側の参考文献レコードへTEI側の引用文を付ける意図 | 元コードは書誌情報文字列とURLを比較しており一致しにくい。同じリストへ反復中に追加する危険もある。`07_add_reference_info.py`で`URL`対`URL`比較に直し、追加分は反復後に挿入。元コードは保存。 |
+| `combine_csv_url_info.py` | 日付・ラベル付きCSVとURL周辺情報JSONを論文タイトル・URLで結合 | 元コードの`header.append(new_columns)`は5列を1列として追加する。URL部分文字列照合も誤一致の可能性がある。`08_combine_context.py`で列を分け、URLはラベル判定と同じ正規化照合を既定にした。元方式はオプションで指定可。 |
 | `analysis_pt_cs.py` | 文・URLの欠損を数える | 集計専用。 |
 | `pt_cs_ci_dict_analy.py` | URLのない脚注レコードを数える | 集計専用。 |
 | `url_around_info_analysis.py` | 本文の引用文と結び付かない参考文献の件数を数える | 集計専用。 |
 
-追加されたコードで、これまで不明だった`pt_cs_ci_dict_output.json`の生成元が分かった。参考文献経路はPDF→TEI XMLが別途必要。XMLの要素構造はGROBIDのfull-text TEIに合うが、**実際に用いたXML生成ソフト・バージョン・オプションは確認できない**。`08a_generate_tei_grobid.py`はGROBIDサービスを利用するために新設した補助コードで、歴史的事実を表すものではない。
+追加されたコードで、これまで不明だった`pt_cs_ci_dict_output.json`の生成元が分かった。参考文献経路はPDF→TEI XMLが別途必要。XMLの要素構造はGROBIDのfull-text TEIに合うが、**実際に用いたXML生成ソフト・バージョン・オプションは確認できない**。`grobid.py`でGROBIDサービスにPDFを送り、TEI XMLを生成できる。実行時には固定された入出力パスを現在の配置に合わせる必要がある。
 
-論文に記載された「URLを含む文と同一段落内の前後文」について、元のMMDパーサが保存するのはURLを含む一文と段落全文まで。前後文を選択する元コードは含まれていない。`10_combine_context.py`で同じspaCyモデルを用いて段落から前後文を取る処理を新設し、照合不能をレポートに残す。元の実験の文境界・例数と一致したかは別途照合が必要。
+論文に記載された「URLを含む文と同一段落内の前後文」について、元のMMDパーサが保存するのはURLを含む一文と段落全文まで。前後文を選択する元コードは含まれていない。`08_combine_context.py`で同じspaCyモデルを用いて段落から前後文を取る処理を新設し、照合不能をレポートに残す。元の実験の文境界・例数と一致したかは別途照合が必要。
 
-`11_split_candidate.py`は論文の年順8:1:1に基づく**候補**を出力するが、元コードでコメントアウトされていたdevのランダム抽出、角掛データ重複除外、元の紙面のtrain/dev/testメンバーシップを復元したものではない。件数レポートが一致しても、行の一致を確認する必要がある。
+`09_split_candidate.py`は論文の年順8:1:1に基づく**候補**を出力するが、元コードでコメントアウトされていたdevのランダム抽出、角掛データ重複除外、元の紙面のtrain/dev/testメンバーシップを復元したものではない。件数レポートが一致しても、行の一致を確認する必要がある。
 
 ## 注意して照合すべき実装上の点
 
@@ -52,6 +52,6 @@
 
 元の中間成果物があれば、各段階のJSON/CSVと本パッケージの結果を行単位で比較する。特にNougatの出力、抽出URLとラベルの重複、正負の件数を比較する。その後、欠けた周辺文抽出・分割の元コードを追加し、最終の17,977件、正例3,185件と分割13,715/1,635/2,627件を照合する。異なる場合は、論文とコードのどちらの記述を訂正すべきか共著者と確認する。
 
-`12_validate_outputs.py`でCSV列、ラベル、分割の行・論文単位の整合性を検査できる。`validation_report.json`の論文件数との差、`combine_report.json`の未照合行、文脈未特定行を見直すこと。構造検査の合格は、元実験との同一性を証明しない。
+`10_validate_outputs.py`でCSV列、ラベル、分割の行・論文単位の整合性を検査できる。`validation_report.json`の論文件数との差、`combine_report.json`の未照合行、文脈未特定行を見直すこと。構造検査の合格は、元実験との同一性を証明しない。
 
-元コードは`original/`と`original_additional/`に保持している。`scripts/01`～`06`は主に実行場所の調整、`07`以降には明示した修正・再構成が含まれる。元のCSVや実験データを所持していないため、論文の件数との一致を保証するものではない。
+元コードは`original/`と`original_additional/`に保持している。`scripts/01`～`04`は主に実行場所の調整、`05`以降には明示した修正・再構成が含まれる。元のCSVや実験データを所持していないため、論文の件数との一致を保証するものではない。

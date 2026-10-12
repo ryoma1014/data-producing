@@ -93,26 +93,24 @@ NougatはPDF名と同じstemの`.mmd`を出力する。`02_extract_urls.py`と�
 .venv/bin/python scripts/02_extract_urls.py
 .venv/bin/python scripts/03_label_urls.py
 .venv/bin/python scripts/04_add_year.py
-DATASET_PARSER_CPU=1 .venv/bin/python scripts/07_parse_mmd_context.py
+DATASET_PARSER_CPU=1 .venv/bin/python scripts/05_parse_mmd_context.py
 ```
 
 ここまでで`data/intermediate/no_kagikakko_extracted_urls.json`、`labelled.csv`、`labelled_with_year.csv`、`pt_cs_ci_dict_output.json`ができる。最後のコマンドはCPU実行の例。原コード同様にGPUを必須にする場合は`DATASET_PARSER_CPU=1`を外す。
 
-参考文献の本文中の引用文を補うには、対応する論文の**full-text TEI XML**を`data/xml/`に配置する必要がある。元のXML生成手順は添付されていない。GROBIDのfull-text APIはその形式のXMLを生成できるため、稼働中のローカルGROBIDサービスがある場合のみ、以下の補助コードを使用できる。この設定が実験当時の方法と同じだとは確認できていない。
+参考文献の本文中の引用文を補うには、対応する論文の**full-text TEI XML**を`data/xml/`に配置する必要がある。元のXML生成手順は添付されていない。GROBIDのfull-text APIはその形式のXMLを生成できるため、稼働中のローカルGROBIDサービスがある場合のみ、以下の補助コードを使用できる。`grobid.py`の固定入出力パスは現在の配置に合わせて変更する。変更方法は[現在のREADME](data_construction_release/README_JA.md)を参照する。この設定が実験当時の方法と同じだとは確認できていない。
 
 ```bash
-.venv/bin/python scripts/08a_generate_tei_grobid.py
+.venv/bin/python scripts/grobid.py
 ls data/xml/*.xml
-DATASET_PARSER_CPU=1 .venv/bin/python scripts/08_parse_tei_references.py
-.venv/bin/python scripts/09_add_reference_info.py
-.venv/bin/python scripts/10_combine_context.py
-.venv/bin/python scripts/11_split_candidate.py
-.venv/bin/python scripts/12_validate_outputs.py
+DATASET_PARSER_CPU=1 .venv/bin/python scripts/06_parse_tei_references.py
+.venv/bin/python scripts/07_add_reference_info.py
+.venv/bin/python scripts/08_combine_context.py
+.venv/bin/python scripts/09_split_candidate.py
+.venv/bin/python scripts/10_validate_outputs.py
 ```
 
-`08a`を使わない場合も、元のTEI XMLを`data/xml/`に置けば`08`以降を実行できる。`08`の出力は`xml_ref_dict.json`、`09`は`url_around_info.json`と`reference_merge_report.json`、`10`は`dataset_with_context.csv`と照合レポート、`11`は**新たに作った候補分割**とレポートを生成する。`12`は列・ラベル・分割の整合性を調べ、`data/intermediate/validation_report.json`を出力する。`reference_merge_report.json`の未照合参考文献、`combine_report.json`の未照合URLと`context_status`、`split_report.json`と`validation_report.json`の件数を必ず確認する。17,977件と異なっても、元のデータがない段階では比較結果として表示し、機械的に失敗とは扱わない。
-
-`02b_trim_parentheses_optional.py`は別案で後続に接続されていない。`05_context_diagnostic_incomplete.py`と`06_split_diagnostic_incomplete.py`も通常の実行手順には含めない。
+`grobid.py`を使わない場合も、元のTEI XMLを`data/xml/`に置けば`06`以降を実行できる。`06`の出力は`xml_ref_dict.json`、`07`は`url_around_info.json`と`reference_merge_report.json`、`08`は`dataset_with_context.csv`と照合レポート、`09`は**新たに作った候補分割**とレポートを生成する。`10`は列・ラベル・分割の整合性を調べ、`data/intermediate/validation_report.json`を出力する。`reference_merge_report.json`の未照合参考文献、`combine_report.json`の未照合URLと`context_status`、`split_report.json`と`validation_report.json`の件数を必ず確認する。17,977件と異なっても、元のデータがない段階では比較結果として表示し、機械的に失敗とは扱わない。
 
 ## 8. GitHubへ反映する前に
 

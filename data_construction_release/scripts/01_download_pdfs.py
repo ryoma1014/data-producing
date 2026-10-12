@@ -2,7 +2,6 @@ import os
 import re
 import json
 import requests
-import making_dataset
 
 FAILED_JSON = "data/logs/failed_download.json"
 NO_URL_JSON = "data/logs/no_url.json"
@@ -16,11 +15,53 @@ counts = {"not_found": 0, "many_match": 0, "no_url": 0, "already": 0, "download"
 def main():
     dataset_papers_li = reading_papers_json()
     check_pdf_url(dataset_papers_li)
-    dataset_li = making_dataset.reading_json()
-    papers_title_list = making_dataset.paper_verified_paper_nodup(dataset_li)[:20]     # dataset_liに登録されている論文タイトルの重複なしリストを作る
+    dataset_li = reading_json()
+    papers_title_list = paper_verified_paper_nodup(dataset_li)
     count_papers(papers_title_list,dataset_papers_li)
     found_papers(papers_title_list,dataset_papers_li)
     print_counts()
+
+
+def reading_json():
+    """ json ファイルの読み込み"""
+    with open("data/input/datasets_JST202508081105.json") as f:
+        dataset_li:list[dict] = json.load(f)
+    return dataset_li
+
+
+def paper_verified_paper_nodup(dataset:list):
+    """paperとverified_paper を考える、datasetに登録されている論文タイトルの重複なしリストを作る"""
+    papers_title_list:list = []
+    a = 0
+    b = 0
+    c = 0
+    d = 0
+    for i_di in dataset:
+        """ 論文タイトルが記述されてない場合は取得しない"""
+        if i_di["paper"] is not None and i_di["verified_paper"] is None:
+            a += 1
+            if i_di["paper"]["title"] in papers_title_list:
+                continue
+            else:
+                papers_title_list.append(i_di["paper"]["title"])
+        elif i_di["paper"] is None and i_di["verified_paper"] is not None:
+            b += 1
+            if i_di["verified_paper"]["title"] in papers_title_list:
+                continue
+            else:
+                papers_title_list.append(i_di["verified_paper"]["title"])
+        elif i_di["paper"] is None and i_di["verified_paper"] is None:
+            c += 1
+            continue
+        else:
+            d += 1
+            """論文タイトルをリスト化、重複は削除"""
+            if i_di["paper"]["title"] in papers_title_list:
+                continue
+            else:
+                papers_title_list.append(i_di["paper"]["title"])
+
+    return papers_title_list
 
 
 def reading_papers_json():

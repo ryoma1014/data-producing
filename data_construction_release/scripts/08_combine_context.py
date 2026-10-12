@@ -1,9 +1,3 @@
-"""Combine labeled paper-URL rows with occurrences from the MMD/TEI parsers.
-
-The historical combine_csv_url_info.py was used as the structural reference.
-This version fixes its nested CSV header and reports every unmatched row.
-"""
-
 import argparse
 import csv
 import json
@@ -17,7 +11,6 @@ TAGS = re.compile(r"\[Cite(?:_Ref|_Footnote_\d+)?\]")
 
 
 def norm(value):
-    # The classifier uses this equality rule. Keep the same URL comparison here.
     return re.sub(r"[^A-Za-z0-9]", "", value or "").lower()
 
 
@@ -32,11 +25,6 @@ def index_titles(mapping):
 
 
 def three_sentences(record, nlp):
-    """Get the matched sentence and its neighbors from the same paragraph.
-
-    This is a reconstruction of the paper's described feature, not a recovered
-    historical implementation. Return a status if the exact sentence is missing.
-    """
     paragraph = record.get("Citation-paragraph", "") or ""
     target = record.get("Citation-sentence", "") or ""
     if not paragraph or not target:

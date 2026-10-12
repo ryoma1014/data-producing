@@ -1,6 +1,7 @@
-requests
-pandas
-scikit-learn
-spacy
-spacy-transformers
-lxml
+requests>=2.32,<3
+pandas>=2.2,<3
+lxml>=5.3,<7
+tqdm>=4.66,<5
+# spacy>=3.8,<3.9
+# en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl#sha256=272a31e9d8530d1e075351d30a462d7e80e31da23574f1b274e200f3fff35bf5
+
